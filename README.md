@@ -1,4 +1,6 @@
-# modelling_lr_001
+# Modelling lab 001
+
+[Course](https://github.com/dKosarevsky/iu7/blob/master/6sem/modeling.md)
 
 На экране табличка.
 
