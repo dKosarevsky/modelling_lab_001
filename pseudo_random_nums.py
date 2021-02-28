@@ -135,7 +135,15 @@ def main():
     elif random_type == "Квантовая генерация":
         st.markdown("---")
         st.write("Генерация случайных чисел с использованием квантового компьютера IBM.")
-        IBMQ.load_account()
+
+        api_key = None
+        try:
+            IBMQ.load_account()
+        except Exception as e:
+            api_key = st.text_input("Enter IBMQ API Key")
+            if api_key != None:
+                IBMQ.save_account(api_key, overwrite=True)
+                IBMQ.load_account()
         rng_provider = IBMQ.get_provider(hub='ibm-q')
         device = st.selectbox("Select Quantum Device", [
             str(each) for each in rng_provider.backends()
