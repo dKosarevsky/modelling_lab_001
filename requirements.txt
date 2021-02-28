@@ -1,3 +1,5 @@
 streamlit==0.77.0
 pandas~=1.2.2
 numpy~=1.20.1
+qiskit==0.23.6
+qiskit-rng==0.2.2

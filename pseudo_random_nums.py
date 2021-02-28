@@ -2,6 +2,27 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+# IBMQ
+from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, execute, IBMQ, Aer
+from qiskit.tools.monitor import job_monitor
+from qiskit_rng import Generator
+
+
+def ibmq_qrng(num_q, minimum, maximum):
+    simulator = Aer.get_backend('qasm_simulator')
+    q = QuantumRegister(num_q, 'q')
+    c = ClassicalRegister(num_q, 'c')
+
+    circuit = QuantumCircuit(q, c)
+    circuit.h(q)  # Applies hadamard gate to all qubits
+    circuit.measure(q, c)  # Measures all qubits
+
+    job = execute(circuit, simulator, shots=1)
+    counts = job.result().get_counts()
+    result = int(counts.most_frequent(), 2)
+    result1 = minimum + result % (maximum + 1 - minimum)
+    return result1
+
 
 def header():
     st.set_page_config(initial_sidebar_state="collapsed")
@@ -112,7 +133,35 @@ def main():
             )
 
     elif random_type == "Квантовая генерация":
-        "В разработке..."
+        st.markdown("---")
+        st.write("Генерация случайных чисел с использованием квантового компьютера IBM.")
+        IBMQ.load_account()
+        rng_provider = IBMQ.get_provider(hub='ibm-q')
+        device = st.selectbox("Select Quantum Device", [
+            str(each) for each in rng_provider.backends()
+        ])
+        backend = rng_provider.get_backend(device)
+
+        generator = Generator(backend=backend)
+
+        if device == "ibmq_qasm_simulator":
+            num_q = 32
+        else:
+            num_q = 5
+
+        quantum_nums_cap_1 = []
+        quantum_nums_cap_2 = []
+        quantum_nums_cap_3 = []
+        for i in range(10):
+            quantum_nums_cap_1.append(ibmq_qrng(num_q, 0, 9))
+            quantum_nums_cap_2.append(ibmq_qrng(num_q, 10, 99))
+            quantum_nums_cap_3.append(ibmq_qrng(num_q, 100, 999))
+
+        generate_table(
+            data=np.array([quantum_nums_cap_1, quantum_nums_cap_2, quantum_nums_cap_3]).T,
+            columns=["Квант."],
+            user=True
+        )
 
 
 if __name__ == "__main__":
