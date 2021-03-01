@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import math
+import sys
 import matplotlib.pyplot as plt
 
 from PIL import Image
@@ -104,14 +106,110 @@ def user_input_handler(digit_capacity: int, key: int) -> np.array:
     return np.array(list_nums, dtype=np.int16)
 
 
-def random_estimator(table_data: list) -> list:
+def fourier_estimator(data: np.ndarray) -> float:
     """
-    Estimates the randomness of sequence in each column of table data
-    :param table_data:
+    Discrete Fourier transform (spectral) estimator as described in NIST paper:
+    https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-22r1a.pdf
+    The focus of this test is the peak heights in the Discrete Fourier Transform of the sequence.
+    The purpose of this estimator is to detect periodic features (i.e., repetitive patterns that are near each other) in the
+    tested sequence that would indicate a deviation from the assumption of randomness.
+    The intention is to detect whether the number of peaks exceeding the 95% threshold is significantly different than 5%.
+
+    The significance value of the estimator is 0.01.
+
+    :param data:
     :return:
     """
-    # return [[np.mean(poisson(col)) for col in table_data]]
-    return [[np.mean(col) for col in table_data]]
+    # Convert all the zeros in the array to -1
+    data[data == 0] = -1
+    # Compute DFT
+    discrete_fourier_transform = np.fft.fft(data)
+    # Compute magnitudes of first half of sequence depending on the system type
+    if sys.version_info > (3, 0):
+        magnitudes = abs(discrete_fourier_transform)[:data.size // 2]
+    else:
+        magnitudes = abs(discrete_fourier_transform)[:data.size / 2]
+    # Compute upper threshold
+    threshold: float = math.sqrt(math.log(1.0 / 0.05) * data.size)
+    # Compute the expected number of peaks (N0)
+    expected_peaks: float = 0.95 * data.size / 2.0
+    # Count the peaks above the upper threshold (N1)
+    counted_peaks: float = float(len(magnitudes[magnitudes < threshold]))
+    # Compute the score (P-value) using the normalized difference
+    normalized_difference: float = (counted_peaks - expected_peaks) / math.sqrt((data.size * 0.95 * 0.05) / 4)
+    score = math.erfc(abs(normalized_difference) / math.sqrt(2))
+
+    significance_value = 0.01
+    return True if score >= significance_value else False
+    # return (True, score) if score >= significance_value else (False, score)
+    # return score
+
+
+def monotonic_estimator(data: np.ndarray) -> float:
+    """
+    Monotonic estimator
+    :param data:
+    :return:
+    """
+    n = len(data) - 1
+    h = 0
+    l = 0
+
+    for i in range(1, len(data)):
+        if (data[i] - data[i - 1]) > 0:
+            h += 1
+        else:
+            l += 1
+
+    h /= n
+    l /= n
+
+    return round(abs(h - l), 5)
+
+
+def frequency_nums_estimator(data: np.ndarray) -> float:
+    """
+    Frequency nums estimator
+    :param data:
+    :return:
+    """
+    n = len(data)
+    C = [0] * 10
+
+    for i in range(n):
+        t = str(i)
+        for j in t:
+            C[int(j)] += 1
+
+    for i in C:
+        i -= 0.1
+        i /= sum(C)
+
+    return max(C) + abs(min(C))
+
+
+def frequency_estimator(data: np.ndarray) -> float:
+    """
+    Frequency estimator
+    :param data:
+    :return:
+    """
+    m = 1/2  #  мат ожидание массива (идеальный случай)
+
+    l = 0
+    r = 0
+
+    for i in data:
+        if i < m:
+            l += 1
+        else:
+            r += 1
+
+    l /= len(data)
+    r /= len(data)
+
+    # насколько слева чисел больше чем справа
+    return round(abs(l - r))
 
 
 def generate_table(data, columns):
@@ -129,8 +227,18 @@ def generate_table(data, columns):
     )
 
     df_est = pd.DataFrame(
-        data=random_estimator(data),
-        index=["Оценка"],
+        data=[
+            [fourier_estimator(col) for col in data],
+            [frequency_estimator(col) for col in data],
+            [frequency_nums_estimator(col) for col in data],
+            [monotonic_estimator(col) for col in data],
+        ],
+        index=[
+            "Фурье",
+            "Частота",
+            "Частота знаков",
+            "Монотонность",
+        ],
         columns=["" for i in range(len(df.columns.tolist()))]
     )
 

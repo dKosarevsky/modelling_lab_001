@@ -1,0 +1,1 @@
+streamlit run pseudo_random_nums.py
