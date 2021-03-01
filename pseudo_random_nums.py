@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 from PIL import Image
 
@@ -33,7 +34,7 @@ RAND_TABLE = """
 
 def ibmq_qrng(num_q, minimum, maximum):
     """
-    Func to generate real random numbers from IBM Quantum computer via API
+    Generate real random numbers from IBM Quantum computer via API
     :param num_q:
     :param minimum:
     :param maximum:
@@ -103,38 +104,38 @@ def user_input_handler(digit_capacity: int, key: int) -> np.array:
     return np.array(list_nums, dtype=np.int16)
 
 
-def generate_table(data, columns, user=False):
+def random_estimator(table_data: list) -> list:
     """
-    Func to generate pandas DataFrame with random samples
+    Estimates the randomness of sequence in each column of table data
+    :param table_data:
+    :return:
+    """
+    # return [[np.mean(poisson(col)) for col in table_data]]
+    return [[np.mean(col) for col in table_data]]
+
+
+def generate_table(data, columns):
+    """
+    Generate pandas DataFrame with random samples
     :param data:
     :param columns:
-    :param user:
     :return:
     """
     discharges = ["1 разр.", "2 разр.", "3 разр."]
     df = pd.DataFrame(
-        data=data,
+        data=data.T,
         index=range(1, 11),
         columns=pd.MultiIndex.from_product([columns, discharges])
     )
 
-    estimator_range = 6
-    if user:
-        estimator_range = 3
-
     df_est = pd.DataFrame(
-        data=np.random.randn(1, estimator_range),
+        data=random_estimator(data),
         index=["Оценка"],
-        columns=["" for i in range(estimator_range)]
+        columns=["" for i in range(len(df.columns.tolist()))]
     )
 
     st.dataframe(data=df)
     st.dataframe(data=df_est)
-    # st.dataframe(data=df.concat(df_est))  # TODO try to use one df for all data
-
-
-def random_estimator():
-    pass
 
 
 def gen_rnd_smpl(low: int, high: int, size: int = 1000, d_type=np.int16) -> np.array:
@@ -144,7 +145,7 @@ def gen_rnd_smpl(low: int, high: int, size: int = 1000, d_type=np.int16) -> np.a
     :param low: min value in array
     :param high: max value in array
     :param size: len of array
-    :return:
+    :return: generated sample of random numbers
     """
     return np.random.randint(low, high, size, d_type)[:10]
 
@@ -154,7 +155,7 @@ def main():
 
     random_type = st.radio(
         "Выберите метод получения чисел",
-        ("Алгоритмическая генерация", "Пользовательский ввод", "Квантовая генерация")
+        ("Алгоритмическая генерация", "Пользовательский ввод", "Пуассон", "Квантовая генерация")
     )
 
     if random_type == "Алгоритмическая генерация":
@@ -172,10 +173,9 @@ def main():
                 gen_rnd_smpl(0, 9),
                 gen_rnd_smpl(10, 99),
                 gen_rnd_smpl(100, 999),
-            ]).T,
+            ]),
             columns=["Табл.", "Алг."]
         )
-
         st.button("Сгенерировать")
 
     elif random_type == "Пользовательский ввод":
@@ -187,10 +187,22 @@ def main():
 
         if user_nums_cap_1.shape[0] + user_nums_cap_2.shape[0] + user_nums_cap_3.shape[0] == 30:
             generate_table(
-                data=np.array([user_nums_cap_1, user_nums_cap_2, user_nums_cap_3]).T,
-                columns=["Польз."],
-                user=True
+                data=np.array([user_nums_cap_1, user_nums_cap_2, user_nums_cap_3]),
+                columns=["Польз."]
             )
+
+    elif random_type == "Пуассон":
+        st.markdown("---")
+        st.write("Генерация случайных чисел с использованием распределения Пуассона")
+        poisson_cap_1 = np.random.poisson(3, 10)
+        poisson_cap_2 = np.random.poisson(33, 10)
+        poisson_cap_3 = np.random.poisson(333, 10)
+
+        generate_table(
+            data=np.array([poisson_cap_1, poisson_cap_2, poisson_cap_3]),
+            columns=["Пуассон"]
+        )
+        st.button("Сгенерировать")
 
     elif random_type == "Квантовая генерация":
         st.markdown("---")
@@ -226,10 +238,10 @@ def main():
             quantum_nums_cap_3.append(ibmq_qrng(num_q, 100, 999))
 
         generate_table(
-            data=np.array([quantum_nums_cap_1, quantum_nums_cap_2, quantum_nums_cap_3]).T,
-            columns=["Квант."],
-            user=True
+            data=np.array([quantum_nums_cap_1, quantum_nums_cap_2, quantum_nums_cap_3]),
+            columns=["Квант."]
         )
+        st.button("Сгенерировать")
 
     if st.checkbox("Показать код"):
         st.markdown("(👍≖‿‿≖)👍")
