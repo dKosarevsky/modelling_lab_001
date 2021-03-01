@@ -140,7 +140,7 @@ def fourier_estimator(data: np.ndarray) -> float:
     score = math.erfc(abs(normalized_difference) / math.sqrt(2))
 
     significance_value = 0.01
-    return True if score >= significance_value else False
+    return False if score >= significance_value else True
     # return (True, score) if score >= significance_value else (False, score)
     # return score
 
