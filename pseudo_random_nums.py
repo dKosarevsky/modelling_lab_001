@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 import math
 import sys
-import matplotlib.pyplot as plt
 
 from PIL import Image
+from streamlit import caching
+from scipy.stats import norm
 
 # IBMQ
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, execute, IBMQ, Aer
@@ -164,28 +165,7 @@ def monotonic_estimator(data: np.ndarray) -> float:
     h /= n
     l /= n
 
-    return round(abs(h - l), 5)
-
-
-def frequency_nums_estimator(data: np.ndarray) -> float:
-    """
-    Frequency nums estimator
-    :param data:
-    :return:
-    """
-    n = len(data)
-    C = [0] * 10
-
-    for i in range(n):
-        t = str(i)
-        for j in t:
-            C[int(j)] += 1
-
-    for i in C:
-        i -= 0.1
-        i /= sum(C)
-
-    return max(C) + abs(min(C))
+    return round(abs(h - l), 2)
 
 
 def frequency_estimator(data: np.ndarray) -> float:
@@ -228,16 +208,16 @@ def generate_table(data, columns):
 
     df_est = pd.DataFrame(
         data=[
-            [fourier_estimator(col) for col in data],
-            [frequency_estimator(col) for col in data],
-            [frequency_nums_estimator(col) for col in data],
+            [round(norm.fit(col)[1], 2) for col in data],
+            [norm.fit(col)[0] for col in data],
             [monotonic_estimator(col) for col in data],
+            [fourier_estimator(col) for col in data],
         ],
         index=[
-            "Фурье",
-            "Частота",
-            "Частота знаков",
+            "Стандартное откл.",
+            "Среднее откл.",
             "Монотонность",
+            "Фурье",
         ],
         columns=["" for i in range(len(df.columns.tolist()))]
     )
@@ -246,6 +226,7 @@ def generate_table(data, columns):
     st.dataframe(data=df_est)
 
 
+@st.cache
 def gen_rnd_smpl(low: int, high: int, size: int = 1000, d_type=np.int16) -> np.array:
     """
     Generate sample of random integers
@@ -272,19 +253,37 @@ def main():
         table_cap_1 = random_table[:10]
         table_cap_2 = random_table[11:31]
         table_cap_3 = random_table[32:62]
+
+        tbl_1 = np.array([int(s) for s in table_cap_1], dtype=np.int16)
+        tbl_2 = np.array([table_cap_2[i:i + 2] for i in range(0, len(table_cap_2), 2)], dtype=np.int16)
+        tbl_3 = np.array([table_cap_3[i:i + 3] for i in range(0, len(table_cap_3), 3)], dtype=np.int16)
+        alg_1 = gen_rnd_smpl(0, 9)
+        alg_2 = gen_rnd_smpl(10, 99)
+        alg_3 = gen_rnd_smpl(100, 999)
+
         st.write("Табличный и алгоритмический метод получения псевдослучайных чисел.")
         generate_table(
             data=np.array([
-                np.array([int(s) for s in table_cap_1], dtype=np.int16),
-                np.array([table_cap_2[i:i+2] for i in range(0, len(table_cap_2), 2)], dtype=np.int16),
-                np.array([table_cap_3[i:i+3] for i in range(0, len(table_cap_3), 3)], dtype=np.int16),
-                gen_rnd_smpl(0, 9),
-                gen_rnd_smpl(10, 99),
-                gen_rnd_smpl(100, 999),
+                tbl_1,
+                tbl_2,
+                tbl_3,
+                alg_1,
+                alg_2,
+                alg_3,
             ]),
             columns=["Табл.", "Алг."]
         )
-        st.button("Сгенерировать")
+        if st.button("Очистить кэш"):
+            caching.clear_cache()
+            st.button("Сгенерировать")
+
+        if st.checkbox("Показать графики"):
+            st.line_chart(tbl_1)
+            st.line_chart(tbl_2)
+            st.line_chart(tbl_3)
+            st.line_chart(alg_1)
+            st.line_chart(alg_2)
+            st.line_chart(alg_3)
 
     elif random_type == "Пользовательский ввод":
         st.markdown("---")
@@ -298,6 +297,10 @@ def main():
                 data=np.array([user_nums_cap_1, user_nums_cap_2, user_nums_cap_3]),
                 columns=["Польз."]
             )
+        if st.checkbox("Показать графики"):
+            st.line_chart(user_nums_cap_1)
+            st.line_chart(user_nums_cap_2)
+            st.line_chart(user_nums_cap_3)
 
     elif random_type == "Пуассон":
         st.markdown("---")
@@ -350,10 +353,10 @@ def main():
             columns=["Квант."]
         )
         st.button("Сгенерировать")
-
-    if st.checkbox("Показать код"):
-        st.markdown("(👍≖‿‿≖)👍")
-        st.markdown("[lab#1 github](https://github.com/dKosarevsky/modelling_lab_001)")
+        if st.checkbox("Показать графики"):
+            st.line_chart(quantum_nums_cap_1)
+            st.line_chart(quantum_nums_cap_2)
+            st.line_chart(quantum_nums_cap_3)
 
 
 if __name__ == "__main__":
