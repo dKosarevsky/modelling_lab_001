@@ -5,7 +5,6 @@ import math
 import sys
 
 from PIL import Image
-from streamlit import caching
 from scipy.stats import norm
 
 # IBMQ
@@ -226,7 +225,6 @@ def generate_table(data, columns):
     st.dataframe(data=df_est)
 
 
-@st.cache
 def gen_rnd_smpl(low: int, high: int, size: int = 1000, d_type=np.int16) -> np.array:
     """
     Generate sample of random integers
@@ -273,9 +271,7 @@ def main():
             ]),
             columns=["Табл.", "Алг."]
         )
-        if st.button("Очистить кэш"):
-            caching.clear_cache()
-            st.button("Сгенерировать")
+        st.button("Сгенерировать")
 
         if st.checkbox("Показать графики"):
             st.line_chart(tbl_1)
@@ -319,11 +315,11 @@ def main():
         st.markdown("---")
         st.write("Генерация случайных чисел с использованием квантового компьютера IBM.")
 
-        api_key = ""
+        api_key = None
         try:
             IBMQ.load_account()
         except Exception as e:
-            api_key = st.text_input("Enter IBMQ API Key")
+            api_key = st.text_input("Введите IBMQ API Key:")
             if not api_key:
                 IBMQ.save_account(api_key, overwrite=True)
                 IBMQ.load_account()
